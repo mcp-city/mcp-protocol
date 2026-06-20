@@ -22,6 +22,7 @@ The mcp:// protocol is a custom URI scheme for Model Context Protocol (MCP) serv
 - **Modular Design**: Pluggable components for extensibility
 - **MCP.city Integration**: Seamless integration with MCP.city marketplace and mesh
 - **Tier-Based Access**: Free tier for basic usage, paid beta for advanced features
+- **Domain Marketplace**: Integration with shop.mcp.city for mcp:// domain purchase and registration
 
 ## Protocol Specification
 
@@ -56,6 +57,11 @@ mcp discover example.com
 
 # Auto-register a server
 mcp register --name "My MCP Server" --endpoint "https://mcp.example.com"
+
+# Domain management via shop.mcp.city
+mcp domain --search green.cloud
+mcp domain --purchase mcp://green.cloud
+mcp domain --register mcp://green.cloud
 ```
 
 ### Using the Python Client

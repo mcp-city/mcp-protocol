@@ -116,6 +116,11 @@ mcp list-tools registry.mcp.city
 
 # Call a tool
 mcp call registry.mcp.city echo --message "Hello World"
+
+# Domain management via shop.mcp.city
+mcp domain --search green.cloud
+mcp domain --purchase mcp://green.cloud
+mcp domain --register mcp://green.cloud
 ```
 
 ## Protocol Endpoints
