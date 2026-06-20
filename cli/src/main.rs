@@ -180,12 +180,7 @@ async fn main() -> Result<()> {
         }
         
         Commands::Register { name, endpoint, description } => {
-            println!("Registering server: {}", name);
-            println!("Endpoint: {}", endpoint);
-            if let Some(desc) = description {
-                println!("Description: {}", desc);
-            }
-            println!("Registration not yet implemented - requires MCP.city API");
+            register_server(&name, &endpoint, description.as_deref()).await?;
         }
         
         Commands::ListTools { url } => {
@@ -522,4 +517,52 @@ fn parse_txt_record(record: &str) -> Option<String> {
         }
     }
     None
+}
+
+async fn register_server(name: &str, endpoint: &str, description: Option<&str>) -> Result<()> {
+    println!("📝 Registering server: {}", name);
+    println!("🌐 Endpoint: {}", endpoint);
+    if let Some(desc) = description {
+        println!("📄 Description: {}", desc);
+    }
+    
+    let registry_url = "https://registry.mcp.city/api/v1/servers";
+    
+    let mut payload = serde_json::json!({
+        "name": name,
+        "endpoint": endpoint,
+    });
+    
+    if let Some(desc) = description {
+        payload["description"] = serde_json::Value::String(desc.to_string());
+    }
+    
+    let response = client
+        .post(registry_url)
+        .json(&payload)
+        .send()
+        .await;
+    
+    match response {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                println!("✅ Server registered successfully");
+                if let Ok(result) = resp.json::<serde_json::Value>().await {
+                    println!("📦 Server ID: {}", result.get("id").unwrap_or(&serde_json::Value::Null));
+                }
+            } else {
+                println!("❌ Registration failed: {}", resp.status());
+                if let Ok(error) = resp.text().await {
+                    println!("Error: {}", error);
+                }
+            }
+        }
+        Err(e) => {
+            println!("❌ Registration failed: {}", e);
+            println!("💡 Note: MCP.city registry API is not yet available");
+            println!("💡 This is a placeholder for future implementation");
+        }
+    }
+    
+    Ok(())
 }
