@@ -1,5 +1,9 @@
 """
 Unit tests for mcp:// Python client
+
+NOTE: These tests use mocks for unit testing. For integration testing with real data,
+a running main.frame.mcp.city instance is required. Integration tests should be added
+once main.frame is deployed and running.
 """
 
 import pytest
