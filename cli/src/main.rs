@@ -101,6 +101,18 @@ enum Commands {
         #[arg(short, long)]
         status: bool,
     },
+    /// Domain management via shop.mcp.city
+    Domain {
+        /// Search for available mcp:// domains
+        #[arg(short, long)]
+        search: Option<String>,
+        /// Purchase a domain
+        #[arg(short, long)]
+        purchase: Option<String>,
+        /// Register mcp:// domain
+        #[arg(short, long)]
+        register: Option<String>,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -268,6 +280,10 @@ async fn main() -> Result<()> {
         
         Commands::Pool { join, leave, status } => {
             manage_pool(join, leave, status).await?;
+        }
+        
+        Commands::Domain { search, purchase, register } => {
+            manage_domain(search, purchase, register).await?;
         }
     }
     
@@ -752,6 +768,124 @@ async fn manage_pool(join: Option<String>, leave: bool, status: bool) -> Result<
         println!("💡 To join a pool: mcp pool --join <POOL_CODE>");
         println!("💡 To check status: mcp pool --status");
         println!("💡 To leave pool: mcp pool --leave");
+    }
+    
+    Ok(())
+}
+
+async fn manage_domain(search: Option<String>, purchase: Option<String>, register: Option<String>) -> Result<()> {
+    println!("🌐 Domain Management via shop.mcp.city");
+    println!("=======================================");
+    println!();
+    
+    if let Some(query) = search {
+        println!("🔍 Searching for mcp:// domains: {}", query);
+        println!();
+        
+        let search_url = format!("https://shop.mcp.city/api/v1/domains/search?q={}", query);
+        
+        let response = client.get(&search_url).send().await;
+        
+        match response {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    if let Ok(results) = resp.json::<serde_json::Value>().await {
+                        println!("✅ Search results:");
+                        if let Some(domains) = results.get("domains").and_then(|d| d.as_array()) {
+                            for domain in domains {
+                                println!("  - mcp://{} - €{}", 
+                                    domain.get("domain").unwrap_or(&serde_json::Value::Null),
+                                    domain.get("price").unwrap_or(&serde_json::Value::Null)
+                                );
+                            }
+                        } else {
+                            println!("  No domains found");
+                        }
+                    }
+                } else {
+                    println!("❌ Search failed: {}", resp.status());
+                }
+            }
+            Err(e) => {
+                println!("❌ Search failed: {}", e);
+                println!("💡 Note: shop.mcp.city API is not yet available");
+                println!("💡 This is a placeholder for future implementation");
+            }
+        }
+    } else if let Some(domain) = purchase {
+        println!("💳 Purchasing domain: {}", domain);
+        println!();
+        
+        let purchase_url = "https://shop.mcp.city/api/v1/domains/purchase";
+        
+        let payload = serde_json::json!({
+            "domain": domain
+        });
+        
+        let response = client.post(purchase_url).json(&payload).send().await;
+        
+        match response {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    println!("✅ Domain purchase initiated");
+                    if let Ok(result) = resp.json::<serde_json::Value>().await {
+                        println!("📦 Transaction ID: {}", result.get("transaction_id").unwrap_or(&serde_json::Value::Null));
+                        println!("💰 Price: €{}", result.get("price").unwrap_or(&serde_json::Value::Null));
+                        println!("💡 Complete purchase via escrow at shop.mcp.city");
+                    }
+                } else {
+                    println!("❌ Purchase failed: {}", resp.status());
+                }
+            }
+            Err(e) => {
+                println!("❌ Purchase failed: {}", e);
+                println!("💡 Note: shop.mcp.city API is not yet available");
+                println!("💡 This is a placeholder for future implementation");
+            }
+        }
+    } else if let Some(domain) = register {
+        println!("📝 Registering mcp:// domain: {}", domain);
+        println!();
+        
+        let register_url = "https://shop.mcp.city/api/v1/domains/register";
+        
+        let payload = serde_json::json!({
+            "domain": domain
+        });
+        
+        let response = client.post(register_url).json(&payload).send().await;
+        
+        match response {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    println!("✅ Domain registered successfully");
+                    if let Ok(result) = resp.json::<serde_json::Value>().await {
+                        println!("📦 Domain ID: {}", result.get("id").unwrap_or(&serde_json::Value::Null));
+                        println!("🌐 mcp://{} is now active", domain);
+                        println!("💡 Your domain is accessible via the MCP network");
+                    }
+                } else {
+                    println!("❌ Registration failed: {}", resp.status());
+                }
+            }
+            Err(e) => {
+                println!("❌ Registration failed: {}", e);
+                println!("💡 Note: shop.mcp.city API is not yet available");
+                println!("💡 This is a placeholder for future implementation");
+            }
+        }
+    } else {
+        println!("📊 Domain Management Commands:");
+        println!("  mcp domain --search <query>  - Search for available mcp:// domains");
+        println!("  mcp domain --purchase <domain> - Purchase a domain via shop.mcp.city");
+        println!("  mcp domain --register <domain> - Register mcp:// domain");
+        println!();
+        println!("💡 Example: mcp domain --search green.cloud");
+        println!("💡 Example: mcp domain --purchase mcp://green.cloud");
+        println!("💡 Example: mcp domain --register mcp://green.cloud");
+        println!();
+        println!("🌐 Shop: https://shop.mcp.city");
+        println!("🌐 API: https://shop.mcp.city/api/v1");
     }
     
     Ok(())
