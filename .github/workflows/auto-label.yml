@@ -1,0 +1,57 @@
+name: Auto Label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Auto Label Issues
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const issue = context.payload.issue;
+          const title = issue.title.toLowerCase();
+          const body = (issue.body || '').toLowerCase();
+          
+          const labels = [];
+          
+          // Auto-label based on title and body
+          if (title.includes('[bug]') || body.includes('bug') || body.includes('error')) {
+            labels.push('bug');
+          }
+          if (title.includes('[feature]') || body.includes('feature') || body.includes('enhancement')) {
+            labels.push('enhancement');
+          }
+          if (title.includes('[doc]') || body.includes('documentation') || body.includes('readme')) {
+            labels.push('documentation');
+          }
+          if (body.includes('python') || body.includes('mcp_protocol')) {
+            labels.push('python');
+          }
+          if (body.includes('javascript') || body.includes('typescript') || body.includes('js')) {
+            labels.push('javascript');
+          }
+          if (body.includes('rust') || body.includes('cli')) {
+            labels.push('rust');
+          }
+          if (body.includes('test') || body.includes('testing')) {
+            labels.push('testing');
+          }
+          if (body.includes('security') || body.includes('vulnerability')) {
+            labels.push('security');
+          }
+          
+          // Add labels if any were found
+          if (labels.length > 0) {
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: labels
+            });
+          }
