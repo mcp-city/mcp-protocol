@@ -79,6 +79,9 @@ enum Commands {
         /// Reset stats
         #[arg(short, long)]
         reset: bool,
+        /// Sync stats to registry
+        #[arg(short, long)]
+        sync: bool,
     },
     /// Check or upgrade tier
     Tier {
@@ -255,8 +258,8 @@ async fn main() -> Result<()> {
             start_server(port, name).await?;
         }
         
-        Commands::Stats { export, reset } => {
-            view_stats(export, reset).await?;
+        Commands::Stats { export, reset, sync } => {
+            view_stats(export, reset, sync).await?;
         }
         
         Commands::Tier { upgrade } => {
@@ -429,7 +432,7 @@ async fn get_stats(State(state): State<Arc<RwLock<ServerState>>>) -> Json<Server
     Json(state.stats.clone())
 }
 
-async fn view_stats(export: Option<String>, reset: bool) -> Result<()> {
+async fn view_stats(export: Option<String>, reset: bool, sync: bool) -> Result<()> {
     let db_path = "mcp_stats.db";
     
     if !std::path::Path::new(db_path).exists() {
@@ -448,6 +451,44 @@ async fn view_stats(export: Option<String>, reset: bool) -> Result<()> {
             .execute(&db)
             .await?;
         println!("✅ Stats reset successfully");
+        return Ok(());
+    }
+    
+    if sync {
+        println!("🔄 Syncing stats to registry.mcp.city...");
+        
+        let rows = sqlx::query_as::<_, (i64, String, i64, i64, i64, String)>(
+            "SELECT id, timestamp, total_requests, successful_requests, failed_requests, tool_calls FROM stats ORDER BY timestamp DESC LIMIT 100"
+        )
+        .fetch_all(&db)
+        .await?;
+        
+        let sync_url = "https://registry.mcp.city/api/v1/stats/sync";
+        
+        let payload = serde_json::json!({
+            "stats": rows
+        });
+        
+        let response = client.post(sync_url).json(&payload).send().await;
+        
+        match response {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    println!("✅ Stats synced successfully");
+                } else {
+                    println!("❌ Sync failed: {}", resp.status());
+                    if let Ok(error) = resp.text().await {
+                        println!("Error: {}", error);
+                    }
+                }
+            }
+            Err(e) => {
+                println!("❌ Sync failed: {}", e);
+                println!("💡 Note: Stats sync requires Registered tier or higher");
+                println!("💡 Contact HYBRID IN. to upgrade: https://hybridin.io/");
+            }
+        }
+        
         return Ok(());
     }
     
