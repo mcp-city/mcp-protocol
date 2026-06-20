@@ -117,28 +117,28 @@ Each module is independently maintainable and can be used standalone.
 - Community support
 - Self-hosted MCP servers
 
-**Paid Beta Tier (Proprietary - MCP.city Hosting):**
+**Paid Beta Tier (Proprietary - HYBRID IN. Hosting):**
 - Advanced mcp:// protocol (Binary + COGNIT MESH)
 - COGNIT MESH integration (cognit.mesh.hybridin.io) - **Proprietary to HYBRID IN.**
-- WHYBLE NODEs access (distributed compute) - **Hosted by MCP.city**
-- Geographic mesh routing (EU, US, ASIA) - **Hosted by MCP.city**
-- SSE streaming (real-time updates) - **Hosted by MCP.city**
-- Priority job queues (urgent, high, normal, low) - **Hosted by MCP.city**
-- Multi-tenant isolation (client_id context) - **Hosted by MCP.city**
-- Qdrant knowledge storage (vector embeddings) - **Hosted by MCP.city**
-- Mesh federation (cross-mesh communication) - **Hosted by MCP.city**
-- Advanced analytics dashboard - **Hosted by MCP.city**
+- WHYBLE NODEs access (distributed compute) - **Hosted by HYBRID IN.**
+- Geographic mesh routing (EU, US, ASIA) - **Hosted by HYBRID IN.**
+- SSE streaming (real-time updates) - **Hosted by HYBRID IN.**
+- Priority job queues (urgent, high, normal, low) - **Hosted by HYBRID IN.**
+- Multi-tenant isolation (client_id context) - **Hosted by HYBRID IN.**
+- Qdrant knowledge storage (vector embeddings) - **Hosted by HYBRID IN.**
+- Mesh federation (cross-mesh communication) - **Hosted by HYBRID IN.**
+- Advanced analytics dashboard - **Hosted by HYBRID IN.**
 - Rate limit: 1000/min
 - Priority support
-- **MCP Server Hosting**: We host your MCP server in our infrastructure during beta
+- **MCP Server Hosting**: HYBRID IN. hosts your MCP server in their infrastructure during beta
 
 **For Paid Beta Hosting:**
 Contact HYBRID IN. for paid beta hosting and enterprise solutions:
 - Website: https://hybridin.io/
 - Commercial inquiries: See consultancy page at https://mcp.city/consults/hybridin-in
 
-**MCP.city Hosting (Beta):**
-During the beta phase, MCP.city offers hosting for MCP servers as part of the paid beta tier. This includes:
+**HYBRID IN. Hosting (Beta):**
+During the beta phase, HYBRID IN. offers hosting for MCP servers as part of the paid beta tier. This includes:
 - Managed deployment on WHYBLE NODEs
 - Geographic routing optimization
 - Automatic scaling
@@ -162,7 +162,6 @@ The mcp:// protocol is open source (MIT License) and maintained by the MCP.city 
 
 **Traditional Donations:**
 - GitHub Sponsors: https://github.com/sponsors/mcp-city
-- Patreon: https://patreon.com/mcp-city
 
 **Donation Usage:**
 - Protocol development and maintenance
