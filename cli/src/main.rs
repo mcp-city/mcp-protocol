@@ -86,6 +86,18 @@ enum Commands {
         #[arg(short, long)]
         upgrade: bool,
     },
+    /// Pool management
+    Pool {
+        /// Join a pool
+        #[arg(short, long)]
+        join: Option<String>,
+        /// Leave current pool
+        #[arg(short, long)]
+        leave: bool,
+        /// Check pool status
+        #[arg(short, long)]
+        status: bool,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -249,6 +261,10 @@ async fn main() -> Result<()> {
         
         Commands::Tier { upgrade } => {
             manage_tier(upgrade).await?;
+        }
+        
+        Commands::Pool { join, leave, status } => {
+            manage_pool(join, leave, status).await?;
         }
     }
     
@@ -613,6 +629,88 @@ async fn manage_tier(upgrade: bool) -> Result<()> {
         println!("   - Geographic routing");
         println!("   - COGNIT MESH integration");
         println!("   - WHYBLE NODEs access");
+    }
+    
+    Ok(())
+}
+
+async fn manage_pool(join: Option<String>, leave: bool, status: bool) -> Result<()> {
+    println!("🌊 MCP.city Pool Management");
+    println!("===========================");
+    println!();
+    
+    let pools = vec![
+        ("EU", "Europe", "Frankfurt, London, Paris"),
+        ("US", "United States", "Virginia, Oregon, California"),
+        ("ASIA", "Asia Pacific", "Singapore, Tokyo, Sydney"),
+    ];
+    
+    if let Some(pool_name) = join {
+        println!("🔗 Joining pool: {}", pool_name);
+        println!();
+        
+        let pool_url = format!("https://registry.mcp.city/api/v1/pools/{}", pool_name);
+        
+        let response = client.post(&pool_url).send().await;
+        
+        match response {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    println!("✅ Successfully joined pool: {}", pool_name);
+                    if let Ok(result) = resp.json::<serde_json::Value>().await {
+                        println!("📦 Pool ID: {}", result.get("id").unwrap_or(&serde_json::Value::Null));
+                    }
+                } else {
+                    println!("❌ Failed to join pool: {}", resp.status());
+                    if let Ok(error) = resp.text().await {
+                        println!("Error: {}", error);
+                    }
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to join pool: {}", e);
+                println!("💡 Note: Pool joining requires Pool Member tier or higher");
+                println!("💡 Contact HYBRID IN. to upgrade: https://hybridin.io/");
+            }
+        }
+    } else if leave {
+        println!("🚪 Leaving current pool");
+        println!();
+        
+        let pool_url = "https://registry.mcp.city/api/v1/pools/leave";
+        
+        let response = client.post(pool_url).send().await;
+        
+        match response {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    println!("✅ Successfully left pool");
+                } else {
+                    println!("❌ Failed to leave pool: {}", resp.status());
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to leave pool: {}", e);
+            }
+        }
+    } else if status {
+        println!("📊 Available Pools:");
+        for (i, (code, region, locations)) in pools.iter().enumerate() {
+            println!("{}. {} ({}) - {}", i + 1, code, region, locations);
+        }
+        println!();
+        println!("💡 To join a pool: mcp pool --join <POOL_CODE>");
+        println!("💡 Note: Pool joining requires Pool Member tier or higher");
+    } else {
+        println!("📊 Available Pools:");
+        for (i, (code, region, locations)) in pools.iter().enumerate() {
+            println!("{}. {} ({}) - {}", i + 1, code, region, locations);
+        }
+        println!();
+        println!("💡 Current Status: Not in any pool");
+        println!("💡 To join a pool: mcp pool --join <POOL_CODE>");
+        println!("💡 To check status: mcp pool --status");
+        println!("💡 To leave pool: mcp pool --leave");
     }
     
     Ok(())
