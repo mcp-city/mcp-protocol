@@ -23,6 +23,12 @@ The mcp:// protocol is a custom URI scheme for Model Context Protocol (MCP) serv
 - **MCP.city Integration**: Seamless integration with MCP.city marketplace and mesh
 - **Tier-Based Access**: Free tier for basic usage, paid beta for advanced features
 - **Domain Marketplace**: Integration with shop.mcp.city for mcp:// domain purchase and registration
+- **Mesh Domain Standard**: Auto-generated mesh.{uniqueID}.mcp.city domains with real signed certificates
+- **OAuth Provider Attachment**: Custom OAuth 2.0 provider support (user brings their own)
+- **RBAC System**: Role-based access control for fine-grained permissions
+- **E2E Encryption**: Machine-to-machine encryption with signed certificates
+- **Chunked File Upload**: Block-chunk-sequence protocol for large files with resume capability
+- **COGNIT MESH Integration**: Real-time routing and job submission via mesh
 
 ## Protocol Specification
 
@@ -125,7 +131,7 @@ Each module is independently maintainable and can be used standalone.
 
 **Paid Beta Tier (Proprietary - HYBRID IN. Hosting):**
 - Advanced mcp:// protocol (Binary + COGNIT MESH)
-- COGNIT MESH integration (cognit.mesh.hybridin.io) - **Proprietary to HYBRID IN.**
+- COGNIT MESH integration (main.frame.mcp.city) - **Proprietary to HYBRID IN.**
 - WHYBLE NODEs access (distributed compute) - **Hosted by HYBRID IN.**
 - Geographic mesh routing (EU, US, ASIA) - **Hosted by HYBRID IN.**
 - SSE streaming (real-time updates) - **Hosted by HYBRID IN.**
@@ -134,6 +140,11 @@ Each module is independently maintainable and can be used standalone.
 - Qdrant knowledge storage (vector embeddings) - **Hosted by HYBRID IN.**
 - Mesh federation (cross-mesh communication) - **Hosted by HYBRID IN.**
 - Advanced analytics dashboard - **Hosted by HYBRID IN.**
+- Mesh domain standard (mesh.{uniqueID}.mcp.city) - **Hosted by HYBRID IN.**
+- OAuth provider attachment (custom OAuth 2.0) - **Hosted by HYBRID IN.**
+- RBAC system (role-based access control) - **Hosted by HYBRID IN.**
+- E2E encryption with signed certificates - **Hosted by HYBRID IN.**
+- Chunked file upload protocol (block-chunk-sequence) - **Hosted by HYBRID IN.**
 - Rate limit: 1000/min
 - Priority support
 - **MCP Server Hosting**: HYBRID IN. hosts your MCP server in their infrastructure during beta
