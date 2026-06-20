@@ -44,7 +44,7 @@ mcp://[user@]host[:port]/path[?query]
 ### Components
 
 - **scheme:** `mcp` (required)
-- **userinfo:** Optional authentication (e.g., `token@`)
+- **userinfo:** Optional authentication (e.g., `user@`, `bot@`, `agent@`)
 - **host:** Server hostname or IP (required)
 - **port:** Optional port (default: 8080)
 - **path:** Optional path (default: `/`)
@@ -54,9 +54,28 @@ mcp://[user@]host[:port]/path[?query]
 
 ```
 mcp://registry.mcp.city
-mcp://token@api.mcp.city:8443/
+mcp://user@api.mcp.city:8443/
+mcp://bot@mesh.abc123.mcp.city
+mcp://agent@mesh.xyz789.mcp.city
 mcp://example.com/mcp-server?version=1.0
 ```
+
+### Mesh Domain Standard
+
+**Format:** `mesh.{uniqueID}.mcp.city`
+
+Mesh domains are auto-generated for users, bots, and agents with real signed certificates:
+
+- **User Mesh Domain:** `mesh.{userID}.mcp.city` - User's personal mesh address
+- **Bot Mesh Domain:** `mesh.{botID}.mcp.city` - Bot's mesh address
+- **Agent Mesh Domain:** `mesh.{agentID}.mcp.city` - Cast agent's mesh address
+
+**Features:**
+- Real-time routing via COGNIT MESH
+- E2E encryption for machine-to-machine communication
+- Signed certificate validation via main.frame.mcp.city
+- SIP translation support (real world to mcp://)
+- Auto-generated with valid certificates on registration
 
 ## Connection Protocol
 
@@ -264,9 +283,35 @@ Authorization: Bearer <token>
 X-API-Key: <key>
 ```
 
+### OAuth Provider Attachment
+
+Users can attach their own OAuth 2.0 provider (nothing fixed - user brings their own):
+
+- **Custom OAuth Providers:** Google, GitHub, Auth0, Okta, Azure AD, or any OAuth 2.0 provider
+- **Token Validation:** main.frame.mcp.city validates OAuth tokens and extracts user identity
+- **Auto Tier Assignment:** On successful connection, main.frame automatically assigns user tier (Free, Pro, Enterprise)
+- **RBAC Integration:** OAuth provider roles map to mcp:// protocol RBAC permissions
+- **Single Sign-On:** Users sign in once via their OAuth provider and access all MCP.city services
+
+### RBAC (Role-Based Access Control)
+
+The mcp:// protocol supports RBAC for fine-grained access control:
+
+- **Roles:** Admin, User, Bot, Agent, Guest
+- **Permissions:** Read, Write, Execute, Admin
+- **Scope:** Server-level, Tool-level, Resource-level
+- **Inheritance:** Roles can inherit permissions from parent roles
+
 ### TLS
 
 All connections should use HTTPS/TLS 1.3 in production.
+
+### Certificate Validation
+
+- **Signed Certificates:** Mesh domains have real signed certificates
+- **Validation via main.frame:** Certificates validated through main.frame.mcp.city
+- **Domain to mcp:// Mapping:** Real domain validated to mcp:// protocol
+- **E2E Encryption:** Machine-to-machine encryption with signed certificates
 
 ### Rate Limiting
 
@@ -348,6 +393,10 @@ curl -X POST https://registry.mcp.city/api/v1/servers/register \
 - Binary protocol (MessagePack/Protobuf)
 - C4 .mcp format
 - COGNIT MESH integration
+- RBAC and OAuth provider attachment
+- Mesh domain routing (mesh.{uniqueID}.mcp.city)
+- Chunked file upload protocol (block-chunk-sequence)
+- E2E encryption with signed certificates
 - Advanced security features
 
 ## Compliance
