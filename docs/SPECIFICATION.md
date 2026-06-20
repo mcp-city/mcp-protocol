@@ -289,7 +289,7 @@ Users can attach their own OAuth 2.0 provider (nothing fixed - user brings their
 
 - **Custom OAuth Providers:** Google, GitHub, Auth0, Okta, Azure AD, or any OAuth 2.0 provider
 - **Token Validation:** main.frame.mcp.city validates OAuth tokens and extracts user identity
-- **Auto Tier Assignment:** On successful connection, main.frame automatically assigns user tier (Free, Pro, Enterprise)
+- **Auto Tier Assignment:** On successful connection, main.frame automatically assigns user tier (Free, Pro, Enterprise via HYBRID IN.)
 - **RBAC Integration:** OAuth provider roles map to mcp:// protocol RBAC permissions
 - **Single Sign-On:** Users sign in once via their OAuth provider and access all MCP.city services
 
