@@ -2,6 +2,15 @@ use clap::{Parser, Subcommand};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
+use axum::{
+    extract::State,
+    response::Json,
+    routing::{get, post},
+    Router,
+};
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use std::collections::HashMap;
 
 #[derive(Parser)]
 #[command(name = "mcp")]
@@ -50,14 +59,51 @@ enum Commands {
         #[arg(short, long)]
         args: Option<String>,
     },
+    /// Start local MCP server
+    Serve {
+        /// Port to listen on
+        #[arg(short, long, default_value = "8080")]
+        port: u16,
+        /// Server name
+        #[arg(short, long, default_value = "Local MCP Server")]
+        name: String,
+    },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct ServerInfo {
     name: String,
     version: String,
     protocol: String,
     capabilities: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct ServerState {
+    info: ServerInfo,
+    tools: HashMap<String, Tool>,
+    stats: ServerStats,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct ServerStats {
+    uptime_seconds: u64,
+    total_requests: u64,
+    successful_requests: u64,
+    failed_requests: u64,
+    tool_calls: HashMap<String, u64>,
+}
+
+impl ServerStats {
+    fn new() -> Self {
+        ServerStats {
+            uptime_seconds: 0,
+            total_requests: 0,
+            successful_requests: 0,
+            failed_requests: 0,
+            tool_calls: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -181,7 +227,110 @@ async fn main() -> Result<()> {
                 println!("Failed to call tool: {}", response.status());
             }
         }
+        
+        Commands::Serve { port, name } => {
+            start_server(port, name).await?;
+        }
     }
     
     Ok(())
+}
+
+async fn start_server(port: u16, name: String) -> Result<()> {
+    let server_info = ServerInfo {
+        name: name.clone(),
+        version: "0.1.0".to_string(),
+        protocol: "mcp://".to_string(),
+        capabilities: vec!["tools/list".to_string(), "tools/call".to_string()],
+    };
+    
+    let mut tools = HashMap::new();
+    tools.insert("echo".to_string(), Tool {
+        name: "echo".to_string(),
+        description: "Echo back the input".to_string(),
+        input_schema: serde_json::json!({
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "Message to echo"
+                }
+            },
+            "required": ["message"]
+        }),
+    });
+    
+    let state = Arc::new(RwLock::new(ServerState {
+        info: server_info.clone(),
+        tools,
+        stats: ServerStats::new(),
+    }));
+    
+    let app = Router::new()
+        .route("/", get(get_server_info))
+        .route("/tools/list", get(list_tools))
+        .route("/tools/call", post(call_tool))
+        .route("/stats", get(get_stats))
+        .with_state(state.clone());
+    
+    let addr = format!("0.0.0.0:{}", port);
+    println!("🚀 Starting MCP server: {}", name);
+    println!("📡 Listening on: http://{}", addr);
+    println!("📊 Stats endpoint: http://{}/stats", addr);
+    
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    axum::serve(listener, app).await?;
+    
+    Ok(())
+}
+
+async fn get_server_info(State(state): State<Arc<RwLock<ServerState>>>) -> Json<ServerInfo> {
+    let state = state.read().await;
+    Json(state.info.clone())
+}
+
+async fn list_tools(State(state): State<Arc<RwLock<ServerState>>>) -> Json<ToolsResponse> {
+    let state = state.read().await;
+    let tools: Vec<Tool> = state.tools.values().cloned().collect();
+    Json(ToolsResponse { tools })
+}
+
+async fn call_tool(
+    State(state): State<Arc<RwLock<ServerState>>>,
+    Json(request): Json<ToolCallRequest>,
+) -> Json<ToolCallResponse> {
+    let mut state = state.write().await;
+    
+    state.stats.total_requests += 1;
+    
+    let tool_name = request.tool.clone();
+    
+    if let Some(_tool) = state.tools.get(&tool_name) {
+        *state.stats.tool_calls.entry(tool_name.clone()).or_insert(0) += 1;
+        state.stats.successful_requests += 1;
+        
+        let result = if tool_name == "echo" {
+            request.arguments
+        } else {
+            serde_json::json!({"error": "Tool not implemented"})
+        };
+        
+        Json(ToolCallResponse {
+            result,
+            success: true,
+            error: None,
+        })
+    } else {
+        state.stats.failed_requests += 1;
+        Json(ToolCallResponse {
+            result: serde_json::json!({}),
+            success: false,
+            error: Some(format!("Tool '{}' not found", tool_name)),
+        })
+    }
+}
+
+async fn get_stats(State(state): State<Arc<RwLock<ServerState>>>) -> Json<ServerStats> {
+    let state = state.read().await;
+    Json(state.stats.clone())
 }

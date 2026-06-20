@@ -28,7 +28,7 @@ The mcp:// CLI tool provides command-line access to the mcp:// protocol for MCP 
 - ✅ register command (API placeholder)
 - ✅ list-tools command
 - ✅ call command
-- ⏳ serve command (local server - upcoming)
+- ✅ serve command (local server with stats tracking)
 - ⏳ mesh commands (upcoming)
 
 ## Installation
