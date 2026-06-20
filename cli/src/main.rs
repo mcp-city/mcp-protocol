@@ -80,6 +80,12 @@ enum Commands {
         #[arg(short, long)]
         reset: bool,
     },
+    /// Check or upgrade tier
+    Tier {
+        /// Upgrade to next tier
+        #[arg(short, long)]
+        upgrade: bool,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -239,6 +245,10 @@ async fn main() -> Result<()> {
         
         Commands::Stats { export, reset } => {
             view_stats(export, reset).await?;
+        }
+        
+        Commands::Tier { upgrade } => {
+            manage_tier(upgrade).await?;
         }
     }
     
@@ -562,6 +572,47 @@ async fn register_server(name: &str, endpoint: &str, description: Option<&str>) 
             println!("💡 Note: MCP.city registry API is not yet available");
             println!("💡 This is a placeholder for future implementation");
         }
+    }
+    
+    Ok(())
+}
+
+async fn manage_tier(upgrade: bool) -> Result<()> {
+    println!("🏆 MCP.city Tier System");
+    println!("========================");
+    println!();
+    
+    let tiers = vec![
+        ("Free", "100/min", "Community support", "Self-hosted"),
+        ("Registered", "500/min", "Email support", "Registry listing"),
+        ("Pool Member", "1000/min", "Priority support", "Geographic routing"),
+        ("Paid Beta", "10000/min", "24/7 support", "COGNIT MESH access"),
+    ];
+    
+    println!("Available Tiers:");
+    for (i, (name, rate, support, features)) in tiers.iter().enumerate() {
+        println!("{}. {} - Rate: {}, Support: {}, Features: {}", i + 1, name, rate, support, features);
+    }
+    println!();
+    
+    if upgrade {
+        println!("⬆️  Tier Upgrade");
+        println!("================");
+        println!("💡 To upgrade your tier, contact HYBRID IN.:");
+        println!("   Website: https://hybridin.io/");
+        println!("   Email: contact@hybridin.io");
+        println!();
+        println!("💡 Note: Tier upgrades require HYBRID IN. hosting");
+        println!("   - Pool Member: Join geographic compute pool");
+        println!("   - Paid Beta: Access COGNIT MESH and WHYBLE NODEs");
+    } else {
+        println!("📊 Current Tier: Free (Open Source)");
+        println!("💡 Upgrade to access advanced features:");
+        println!("   - Higher rate limits");
+        println!("   - Priority support");
+        println!("   - Geographic routing");
+        println!("   - COGNIT MESH integration");
+        println!("   - WHYBLE NODEs access");
     }
     
     Ok(())
