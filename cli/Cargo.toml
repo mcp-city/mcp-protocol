@@ -21,6 +21,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"] }
 chrono = "0.4"
+trust-dns-resolver = "0.23"
 
 [dev-dependencies]
 mockito = "1.0"

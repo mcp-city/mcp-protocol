@@ -13,6 +13,7 @@ use tokio::sync::RwLock;
 use std::collections::HashMap;
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
 use chrono::{Utc, DateTime};
+use trust_dns_resolver::{TokioAsyncResolver, config::{ResolverConfig, ResolverOpts}};
 
 #[derive(Parser)]
 #[command(name = "mcp")]
@@ -175,10 +176,7 @@ async fn main() -> Result<()> {
         }
         
         Commands::Discover { domain } => {
-            println!("Discovering MCP servers for {}...", domain);
-            println!("DNS TXT record: _mcp._tcp.{}", domain);
-            // TODO: Implement actual DNS lookup
-            println!("DNS discovery not yet implemented");
+            discover_mcp_servers(&domain).await?;
         }
         
         Commands::Register { name, endpoint, description } => {
@@ -459,4 +457,69 @@ async fn view_stats(export: Option<String>, reset: bool) -> Result<()> {
     }
     
     Ok(())
+}
+
+async fn discover_mcp_servers(domain: &str) -> Result<()> {
+    println!("🔍 Discovering MCP servers for {}...", domain);
+    println!("📡 DNS TXT record: _mcp._tcp.{}", domain);
+    
+    let resolver = TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default()).await?;
+    let txt_record_name = format!("_mcp._tcp.{}", domain);
+    
+    match resolver.txt_lookup(txt_record_name.clone()).await {
+        Ok(txt_records) => {
+            println!("✅ Found {} DNS TXT record(s)", txt_records.len());
+            for txt in txt_records {
+                for record in txt.txt_data() {
+                    println!("📝 Record: {}", record);
+                    
+                    if let Some(endpoint) = parse_txt_record(record) {
+                        println!("🌐 MCP Endpoint: {}", endpoint);
+                        
+                        let response = client.get(&endpoint).send().await;
+                        if let Ok(resp) = response {
+                            if resp.status().is_success() {
+                                if let Ok(info) = resp.json::<ServerInfo>().await {
+                                    println!("📦 Server: {}", info.name);
+                                    println!("🔧 Version: {}", info.version);
+                                    println!("⚡ Protocol: {}", info.protocol);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("❌ DNS lookup failed: {}", e);
+            println!("💡 Trying /.well-known/mcp endpoint...");
+            
+            let well_known_url = format!("https://{}/.well-known/mcp", domain);
+            let response = client.get(&well_known_url).send().await;
+            
+            if let Ok(resp) = response {
+                if resp.status().is_success() {
+                    println!("✅ Found /.well-known/mcp endpoint");
+                    if let Ok(info) = resp.json::<ServerInfo>().await {
+                        println!("📦 Server: {}", info.name);
+                        println!("🔧 Version: {}", info.version);
+                        println!("⚡ Protocol: {}", info.protocol);
+                    }
+                } else {
+                    println!("❌ /.well-known/mcp not found");
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+fn parse_txt_record(record: &str) -> Option<String> {
+    for part in record.split_whitespace() {
+        if part.starts_with("endpoint=") {
+            return Some(part.trim_start_matches("endpoint=").to_string());
+        }
+    }
+    None
 }
