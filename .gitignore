@@ -78,9 +78,7 @@ temp/
 *.tmp
 
 # Database
-*.db
-*.sqlite
-*.sqlite3
+mcp_stats.db
 
 # Certificates
 *.pem

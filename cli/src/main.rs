@@ -11,6 +11,8 @@ use axum::{
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
+use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
+use chrono::{Utc, DateTime};
 
 #[derive(Parser)]
 #[command(name = "mcp")]
@@ -68,6 +70,15 @@ enum Commands {
         #[arg(short, long, default_value = "Local MCP Server")]
         name: String,
     },
+    /// View local stats
+    Stats {
+        /// Export stats to file
+        #[arg(short, long)]
+        export: Option<String>,
+        /// Reset stats
+        #[arg(short, long)]
+        reset: bool,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -83,6 +94,7 @@ struct ServerState {
     info: ServerInfo,
     tools: HashMap<String, Tool>,
     stats: ServerStats,
+    db: SqlitePool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -231,12 +243,38 @@ async fn main() -> Result<()> {
         Commands::Serve { port, name } => {
             start_server(port, name).await?;
         }
+        
+        Commands::Stats { export, reset } => {
+            view_stats(export, reset).await?;
+        }
     }
     
     Ok(())
 }
 
 async fn start_server(port: u16, name: String) -> Result<()> {
+    let db_path = "mcp_stats.db";
+    let db_options = SqliteConnectOptions::new()
+        .filename(db_path)
+        .create_if_missing(true);
+    
+    let db = SqlitePool::connect_with(db_options).await?;
+    
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            total_requests INTEGER NOT NULL DEFAULT 0,
+            successful_requests INTEGER NOT NULL DEFAULT 0,
+            failed_requests INTEGER NOT NULL DEFAULT 0,
+            tool_calls TEXT NOT NULL DEFAULT '{}'
+        )
+        "#
+    )
+    .execute(&db)
+    .await?;
+    
     let server_info = ServerInfo {
         name: name.clone(),
         version: "0.1.0".to_string(),
@@ -264,6 +302,7 @@ async fn start_server(port: u16, name: String) -> Result<()> {
         info: server_info.clone(),
         tools,
         stats: ServerStats::new(),
+        db,
     }));
     
     let app = Router::new()
@@ -277,6 +316,7 @@ async fn start_server(port: u16, name: String) -> Result<()> {
     println!("🚀 Starting MCP server: {}", name);
     println!("📡 Listening on: http://{}", addr);
     println!("📊 Stats endpoint: http://{}/stats", addr);
+    println!("💾 Stats database: {}", db_path);
     
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
@@ -315,6 +355,23 @@ async fn call_tool(
             serde_json::json!({"error": "Tool not implemented"})
         };
         
+        let tool_calls_json = serde_json::to_string(&state.stats.tool_calls).unwrap_or_else(|_| "{}".to_string());
+        
+        sqlx::query(
+            r#"
+            INSERT INTO stats (timestamp, total_requests, successful_requests, failed_requests, tool_calls)
+            VALUES (?, ?, ?, ?, ?)
+            "#
+        )
+        .bind(Utc::now().to_rfc3339())
+        .bind(state.stats.total_requests as i64)
+        .bind(state.stats.successful_requests as i64)
+        .bind(state.stats.failed_requests as i64)
+        .bind(&tool_calls_json)
+        .execute(&state.db)
+        .await
+        .ok();
+        
         Json(ToolCallResponse {
             result,
             success: true,
@@ -322,6 +379,24 @@ async fn call_tool(
         })
     } else {
         state.stats.failed_requests += 1;
+        
+        let tool_calls_json = serde_json::to_string(&state.stats.tool_calls).unwrap_or_else(|_| "{}".to_string());
+        
+        sqlx::query(
+            r#"
+            INSERT INTO stats (timestamp, total_requests, successful_requests, failed_requests, tool_calls)
+            VALUES (?, ?, ?, ?, ?)
+            "#
+        )
+        .bind(Utc::now().to_rfc3339())
+        .bind(state.stats.total_requests as i64)
+        .bind(state.stats.successful_requests as i64)
+        .bind(state.stats.failed_requests as i64)
+        .bind(&tool_calls_json)
+        .execute(&state.db)
+        .await
+        .ok();
+        
         Json(ToolCallResponse {
             result: serde_json::json!({}),
             success: false,
@@ -333,4 +408,55 @@ async fn call_tool(
 async fn get_stats(State(state): State<Arc<RwLock<ServerState>>>) -> Json<ServerStats> {
     let state = state.read().await;
     Json(state.stats.clone())
+}
+
+async fn view_stats(export: Option<String>, reset: bool) -> Result<()> {
+    let db_path = "mcp_stats.db";
+    
+    if !std::path::Path::new(db_path).exists() {
+        println!("❌ Stats database not found. Start the server first with: mcp serve");
+        return Ok(());
+    }
+    
+    let db_options = SqliteConnectOptions::new()
+        .filename(db_path)
+        .create_if_missing(false);
+    
+    let db = SqlitePool::connect_with(db_options).await?;
+    
+    if reset {
+        sqlx::query("DELETE FROM stats")
+            .execute(&db)
+            .await?;
+        println!("✅ Stats reset successfully");
+        return Ok(());
+    }
+    
+    let rows = sqlx::query_as::<_, (i64, String, i64, i64, i64, String)>(
+        "SELECT id, timestamp, total_requests, successful_requests, failed_requests, tool_calls FROM stats ORDER BY timestamp DESC LIMIT 100"
+    )
+    .fetch_all(&db)
+    .await?;
+    
+    println!("📊 MCP Server Stats");
+    println!("====================");
+    println!();
+    
+    for (id, timestamp, total, successful, failed, tool_calls) in rows {
+        println!("ID: {}", id);
+        println!("Timestamp: {}", timestamp);
+        println!("Total Requests: {}", total);
+        println!("Successful: {}", successful);
+        println!("Failed: {}", failed);
+        println!("Tool Calls: {}", tool_calls);
+        println!();
+    }
+    
+    if let Some(export_path) = export {
+        let export_data = serde_json::to_string_pretty(&rows)?;
+        std::fs::write(&export_path, export_data)?;
+        println!("✅ Stats exported to: {}", export_path);
+    }
+    
+    Ok(())
 }
